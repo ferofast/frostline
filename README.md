@@ -2,7 +2,7 @@
 
 [![make.fun · best-game-01](https://make.fun/badge/best-game-01.svg)](https://make.fun/bounty/best-game-01?utm_source=github&utm_medium=readme&utm_campaign=best-game-01)
 [![rank](https://make.fun/badge/best-game-01/ferofast/frostline/rank.svg)](https://make.fun/bounty/best-game-01)
-[![score](https://make.fun/badge/best-game-01/ferofast/frostline/score.svg)](https://make.fun/bounty/best-game-01)
+[![reward](https://make.fun/badge/best-game-01/ferofast/frostline/reward.svg)](https://make.fun/bounty/best-game-01)
 
 A mountain village below a volcano. Ember imps march down the one meltwater river
 toward the village, and you are the Frost Warden. **Freeze is the only wall.**
