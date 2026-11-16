@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FROSTLINE — freeze is the only wall</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #060f1e; height: 100%; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { width: min(100vw, 177.78vh); height: min(100vh, 56.25vw); display: block; background: #0a1626; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="game" width="1280" height="720"></canvas>
+<script type="module">
+  import { boot } from './src/main.js';
+  const canvas = document.getElementById('game');
+  window.addEventListener('error', (ev) => { document.title = 'JS ERROR: ' + ev.message; });
+  boot(canvas, location.search).catch((err) => { document.title = 'BOOT ERROR: ' + err.message; });
+</script>
+</body>
+</html>
