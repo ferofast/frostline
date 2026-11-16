@@ -1,80 +1,39 @@
-// FROSTLINE audio — one job: WebAudio feedback, no assets, no network.
-// Freeze crackle, shatter chime, thaw drip, wave horn, victory arpeggio.
-// Everything is guarded: no AudioContext until the first user gesture,
-// silent in shot/test mode, silent when muted.
+// FROSTLINE v4 — WebAudio bleeps, no assets. A tiny synth: freeze crackle,
+// shatter chime, thaw drip, wave horn, victory arpeggio. Silent until the
+// first user gesture (browser autoplay rules); M toggles it.
 
-let ctx = null;
-let muted = false;
-
-function ac(G) {
-  if (G && G.shotMode) return null;
-  if (typeof window === 'undefined') return null;
-  if (!ctx) {
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return null;
-      ctx = new AC();
-    } catch (e) { return null; }
+export class AudioBus {
+  constructor() {
+    this.ctx = null;
+    this.on = true;
   }
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-  return ctx;
-}
 
-function tone(G, freq, dur, type, vol, slideTo) {
-  if (G && G.muted) return;
-  const c = ac(G);
-  if (!c) return;
-  try {
-    const o = c.createOscillator();
-    const g = c.createGain();
-    o.type = type || 'sine';
-    o.frequency.setValueAtTime(freq, c.currentTime);
-    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, c.currentTime + dur);
-    g.gain.setValueAtTime(vol || 0.12, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-    o.connect(g);
-    g.connect(c.destination);
-    o.start();
-    o.stop(c.currentTime + dur + 0.02);
-  } catch (e) { /* sound is garnish, never fatal */ }
-}
-
-function noise(G, dur, vol, filterFreq) {
-  if (G && G.muted) return;
-  const c = ac(G);
-  if (!c) return;
-  try {
-    const len = Math.floor(c.sampleRate * dur);
-    const buf = c.createBuffer(1, len, c.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
-    const src = c.createBufferSource();
-    src.buffer = buf;
-    const f = c.createBiquadFilter();
-    f.type = 'bandpass';
-    f.frequency.value = filterFreq || 3000;
-    const g = c.createGain();
-    g.gain.value = vol || 0.15;
-    src.connect(f); f.connect(g); g.connect(c.destination);
-    src.start();
-  } catch (e) { /* garnish */ }
-}
-
-export function playSfx(G, name) {
-  if (!G) return;
-  switch (name) {
-    case 'freeze': noise(G, 0.12, 0.18, 4200); tone(G, 880, 0.08, 'triangle', 0.08, 1320); break;
-    case 'thaw': tone(G, 520, 0.18, 'sine', 0.1, 240); break;
-    case 'click': tone(G, 660, 0.06, 'square', 0.06); break;
-    case 'shatter': noise(G, 0.18, 0.2, 5200); tone(G, 1240, 0.16, 'triangle', 0.1, 1860); break;
-    case 'reach': tone(G, 180, 0.3, 'sawtooth', 0.14, 90); break;
-    case 'horn': tone(G, 220, 0.4, 'sawtooth', 0.12, 330); tone(G, 110, 0.4, 'sawtooth', 0.1, 165); break;
-    case 'relic': tone(G, 523, 0.12, 'sine', 0.1); setTimeout(() => tone(G, 784, 0.14, 'sine', 0.1), 90); break;
-    case 'victory':
-      [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(G, f, 0.22, 'triangle', 0.12), i * 130));
-      break;
-    case 'defeat': [330, 262, 196].forEach((f, i) => setTimeout(() => tone(G, f, 0.3, 'sawtooth', 0.1), i * 160)); break;
+  ensure() {
+    if (!this.ctx) {
+      try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { this.ctx = null; }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
   }
-}
 
-export function setMuted(m) { muted = m; }
+  tone(freq, seconds, type, gain, when = 0) {
+    if (!this.on || !this.ctx) return;
+    const t0 = this.ctx.currentTime + when;
+    const osc = this.ctx.createOscillator();
+    const amp = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    amp.gain.setValueAtTime(gain, t0);
+    amp.gain.exponentialRampToValueAtTime(0.001, t0 + seconds);
+    osc.connect(amp).connect(this.ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + seconds);
+  }
+
+  freeze() { this.ensure(); this.tone(880, 0.12, 'triangle', 0.12); this.tone(1320, 0.1, 'sine', 0.07, 0.03); }
+  shatter() { this.ensure(); this.tone(1568, 0.16, 'sine', 0.14); this.tone(2093, 0.2, 'sine', 0.1, 0.05); }
+  thaw() { this.ensure(); this.tone(392, 0.14, 'sine', 0.08); }
+  horn() { this.ensure(); this.tone(220, 0.3, 'sawtooth', 0.08); this.tone(330, 0.3, 'sawtooth', 0.06, 0.08); }
+  win() { this.ensure(); [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.25, 'triangle', 0.12, i * 0.12)); }
+  lose() { this.ensure(); [392, 330, 262, 196].forEach((f, i) => this.tone(f, 0.3, 'sawtooth', 0.07, i * 0.14)); }
+  click() { this.ensure(); this.tone(660, 0.06, 'square', 0.05); }
+}
